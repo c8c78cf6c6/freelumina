@@ -129,7 +129,7 @@ cat > "${plugin_root}/ida-plugin.json" <<EOF
     "name": "freelumina",
     "entryPoint": "freelumina",
     "version": "${plugin_version}",
-    "description": "resident plugin experiment in C and line-numbered BASIC",
+    "description": "resident plugin experiment in C and Fortran",
     "urls": { "repository": "${repository_url}" },
     "authors": [ { "name": "Anonymous", "email": "anonymous@example.invalid" } ],
     "idaVersions": [${ida_versions}],

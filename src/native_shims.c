@@ -1,4 +1,4 @@
-/* C-only host logging and instruction-cache operations. */
+/* FREELUMINA. The remaining C has been asked to justify its headcount. */
 #include "native.h"
 #include <stdio.h>
 #include <string.h>

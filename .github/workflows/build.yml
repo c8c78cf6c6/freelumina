@@ -30,19 +30,19 @@ jobs:
             lib: build/freelumina.dylib
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Install Linux compiler
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y gcc make curl xz-utils libncurses-dev libffi-dev cmake ninja-build
+        run: sudo apt-get update && sudo apt-get install -y gfortran cmake ninja-build
       - name: Install macOS compiler
         if: runner.os == 'macOS'
         run: brew install gcc cmake ninja
-      - name: Bootstrap FreeBASIC
-        run: sh tools/bootstrap_freebasic.sh
       - name: Configure
+        env:
+          FC: gfortran
         run: >-
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
-          -DFBC_EXECUTABLE="${{ github.workspace }}/build/toolchain/native/bin/fbc"
+          -DFL_RUNTIME_CHECKS=OFF
       - name: Build
         run: |
           set -o pipefail
@@ -57,7 +57,7 @@ jobs:
       - run: ctest --test-dir build --output-on-failure
       - name: Stage artifact
         run: cp "${{ matrix.lib }}" "${{ matrix.asset }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
@@ -74,31 +74,31 @@ jobs:
             runner: windows-2025
             environment: UCRT64
             package_prefix: mingw-w64-ucrt-x86_64
+            compiler_package: gcc-fortran
             c_compiler: gcc
+            fortran_compiler: gfortran
             asset: freelumina-windows-x86_64.dll
     runs-on: ${{ matrix.runner }}
     defaults:
       run:
         shell: msys2 {0}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: msys2/setup-msys2@v2
         with:
           msystem: ${{ matrix.environment }}
           update: true
           install: >-
-            ${{ matrix.package_prefix }}-gcc
-            make curl xz
+            ${{ matrix.package_prefix }}-${{ matrix.compiler_package }}
             ${{ matrix.package_prefix }}-cmake
             ${{ matrix.package_prefix }}-ninja
             ${{ matrix.package_prefix }}-python
-      - name: Bootstrap FreeBASIC
-        run: sh tools/bootstrap_freebasic.sh
       - name: Configure
         run: >-
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-          -DFBC_EXECUTABLE="$PWD/build/toolchain/native/bin/fbc.exe"
+          -DCMAKE_Fortran_COMPILER=${{ matrix.fortran_compiler }}
+          -DFL_RUNTIME_CHECKS=OFF
       - name: Build
         run: |
           set -o pipefail
@@ -113,7 +113,7 @@ jobs:
       - run: ctest --test-dir build --output-on-failure
       - name: Stage artifact
         run: cp build/freelumina.dll "${{ matrix.asset }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.asset }}
           path: ${{ matrix.asset }}
@@ -129,8 +129,8 @@ jobs:
       contents: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
         with:
           pattern: freelumina-*
           merge-multiple: true

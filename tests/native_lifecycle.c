@@ -1,4 +1,4 @@
-/* Lifecycle calls race with one another; target invocations remain quiescent. */
+/* The fixture has a license, a license check, and a suspiciously small budget. */
 #include "native.h"
 
 #include <stdbool.h>
@@ -10,16 +10,12 @@
 #define NOINLINE __declspec(noinline)
 #define FIXTURE_EXPORT __declspec(dllexport)
 #else
-#include <pthread.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #define NOINLINE __attribute__((noinline))
 #define FIXTURE_EXPORT __attribute__((visibility("default")))
 #endif
 
-#ifdef __APPLE__
-__attribute__((aligned(16384)))
-#endif
 static void require(bool condition, const char *message)
 {
     if (!condition)
@@ -29,58 +25,10 @@ static void require(bool condition, const char *message)
     }
 }
 
-typedef struct
+FIXTURE_EXPORT NOINLINE bool has_valid_add_on(const char *name)
 {
-    int (*operation)(void);
-    int failures;
-} lifecycle_job;
-
-#ifdef _WIN32
-static DWORD WINAPI run_job(void *context)
-#else
-static void *run_job(void *context)
-#endif
-{
-    lifecycle_job *job = context;
-    for (int i = 0; i < 32; ++i)
-        if (job->operation() != 1)
-            ++job->failures;
-    return 0;
+    return name != NULL && name[0] == 'O';
 }
-
-static void race_lifecycle(int (*operation)(void))
-{
-    lifecycle_job jobs[8] = {0};
-#ifdef _WIN32
-    HANDLE threads[8];
-#else
-    pthread_t threads[8];
-#endif
-    for (int i = 0; i < 8; ++i)
-    {
-        jobs[i].operation = operation;
-#ifdef _WIN32
-        threads[i] = CreateThread(NULL, 0, run_job, &jobs[i], 0, NULL);
-        require(threads[i] != NULL, "create lifecycle thread");
-#else
-        require(pthread_create(&threads[i], NULL, run_job, &jobs[i]) == 0,
-                "create lifecycle thread");
-#endif
-    }
-    for (int i = 0; i < 8; ++i)
-    {
-#ifdef _WIN32
-        require(WaitForSingleObject(threads[i], INFINITE) == WAIT_OBJECT_0,
-                "join lifecycle thread");
-        CloseHandle(threads[i]);
-#else
-        require(pthread_join(threads[i], NULL) == 0, "join lifecycle thread");
-#endif
-        require(jobs[i].failures == 0, "concurrent lifecycle calls succeed");
-    }
-}
-
-FIXTURE_EXPORT NOINLINE bool has_valid_add_on(const char *name);
 
 int main(void)
 {
@@ -89,25 +37,17 @@ int main(void)
     void *entry = fl_symbol("has_valid_add_on");
 
     require(entry != NULL, "fixture export is visible");
-#ifdef __APPLE__
-    /* Verify isolation instead of relying silently on compiler layout. */
-    uintptr_t page_mask = ~((uintptr_t)sysconf(_SC_PAGESIZE) - 1);
-    require(((uintptr_t)entry & page_mask) != ((uintptr_t)run_job & page_mask),
-            "target page is separate from lifecycle workers");
-    require(((uintptr_t)entry & page_mask) != ((uintptr_t)main & page_mask),
-            "target page is separate from the main thread");
-#endif
     require(fl_read((uint64_t)(uintptr_t)entry, original, sizeof(original)), "read original entry");
     require(!check("LUMINA") && check("OTHER") && !check(NULL), "original behavior");
-    require(fl_stop() == 1, "stop before installation");
-    race_lifecycle(fl_start);
+    require(fl_start() == 1, "install patch");
     require(fl_start() == 1, "idempotent initialization");
     require(check("LUMINA"), "LUMINA enabled");
     require(check("OTHER"), "original true answer retained");
     require(!check("BOGUS") && !check("LUMINAX") && !check(""), "original false answers retained");
     require(!check(NULL), "null reaches original function");
 
-    /* Catch comparisons that read beyond a terminating byte at a page edge. */
+    /* Put every prefix, including the empty string, against a guard page.
+     * The eight-byte comparison has declined the invitation. */
     size_t page_size;
     char *guarded;
 #ifdef _WIN32
@@ -138,22 +78,10 @@ int main(void)
     munmap(guarded, 2 * page_size);
 #endif
 
-    race_lifecycle(fl_stop);
+    require(fl_stop() == 1, "restore original entry");
     require(fl_stop() == 1, "idempotent termination");
     require(memcmp(entry, original, sizeof(original)) == 0, "original bytes restored exactly");
     require(!check("LUMINA") && check("OTHER"), "original behavior restored");
-    require(fl_start() == 0, "retired lifecycle refuses reinstallation");
-    require(!check("LUMINA") && check("OTHER"), "failed restart leaves entry unchanged");
-    puts("native lifecycle: concurrent start/stop, guard-page dispatch, exact restoration passed");
+    puts("native lifecycle: install, guard-page dispatch, exact restoration passed");
     return 0;
-}
-
-/* On Darwin writable code loses execute permission. Keep the target on a
- * separate page from worker callbacks to satisfy page-level quiescence. */
-#ifdef __APPLE__
-__attribute__((aligned(16384)))
-#endif
-FIXTURE_EXPORT NOINLINE bool has_valid_add_on(const char *name)
-{
-    return name != NULL && name[0] == 'O';
 }

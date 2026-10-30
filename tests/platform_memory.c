@@ -1,4 +1,4 @@
-/* Mutations must preserve page protections and respect byte ownership. */
+/* The page protections return from this meeting in the state they arrived. */
 #include "native.h"
 #include <stdbool.h>
 #include <stdio.h>

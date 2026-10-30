@@ -5,7 +5,7 @@
     "name": "freelumina",
     "entryPoint": "freelumina",
     "version": "3.0.0",
-    "description": "resident plugin experiment in C and line-numbered BASIC",
+    "description": "resident plugin experiment in C and Fortran",
     "urls": {
       "repository": "https://github.com/c8c78cf6c6/freelumina"
     },
