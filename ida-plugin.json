@@ -1,0 +1,24 @@
+{
+  "$schema": "https://hcli.docs.hex-rays.com/schemas/ida-plugin.json",
+  "IDAMetadataDescriptorVersion": 1,
+  "plugin": {
+    "name": "freelumina",
+    "entryPoint": "freelumina",
+    "version": "3.0.0",
+    "description": "resident plugin experiment in C and line-numbered BASIC",
+    "urls": {
+      "repository": "https://github.com/c8c78cf6c6/freelumina"
+    },
+    "authors": [
+      { "name": "Anonymous", "email": "anonymous@example.invalid" }
+    ],
+    "idaVersions": ["9.0", "9.1", "9.2", "9.3", "9.4", "9.5"],
+    "platforms": [
+      "windows-x86_64",
+      "linux-x86_64",
+      "linux-aarch64",
+      "macos-x86_64",
+      "macos-aarch64"
+    ]
+  }
+}
